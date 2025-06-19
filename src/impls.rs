@@ -1,5 +1,74 @@
 use crate::*;
 
+impl<T: Sirius> Sirius for Vec<T> {
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
+        if self.len() >= LengthPrefix::MAX as usize {
+            panic!("length is greater than LengthPrefix::MAX");
+        }
+
+        output.extend_from_slice(&(self.len() as LengthPrefix).to_be_bytes());
+
+        // FIXME: replace with a size_hint function in the future as the allocation
+        // size is not correct
+        output.reserve(self.len() * std::mem::size_of::<T>());
+
+        self.iter().map(|i| i.serialize(output)).sum::<usize>() + LENGTH_BYTES
+    }
+
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
+        let mut offset = 0;
+        let (data_len, bytes_read) = LengthPrefix::deserialize(data)?;
+        offset += bytes_read;
+
+        let mut deserialized: Vec<T> = Vec::with_capacity(data_len as _);
+        dbg!(data_len);
+        for _ in 0..data_len {
+            let (elem, bytes_read) =
+                T::deserialize(data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
+
+            offset += bytes_read;
+            deserialized.push(elem);
+        }
+
+        Ok((deserialized, offset))
+    }
+}
+
+impl<T: Sirius, const N: usize> Sirius for [T; N] {
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
+        if N >= LengthPrefix::MAX as usize {
+            panic!("length is greater than LengthPrefix::MAX");
+        }
+
+        output.extend_from_slice(&(self.len() as LengthPrefix).to_be_bytes());
+
+        // FIXME: replace with a size_hint function in the future as the allocation
+        // size is not correct
+        output.reserve(self.len() * std::mem::size_of::<T>());
+
+        self.iter().map(|i| i.serialize(output)).sum::<usize>() + LENGTH_BYTES
+    }
+
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
+        let mut offset = 0;
+        let (data_len, bytes_read) = LengthPrefix::deserialize(data)?;
+        offset += bytes_read;
+
+        assert_eq!(data_len, N as _);
+
+        let mut deserialized: [T; N] = unsafe { std::mem::zeroed() };
+        for i in deserialized.iter_mut() {
+            let (elem, bytes_read) =
+                T::deserialize(data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
+
+            offset += bytes_read;
+            *i = elem;
+        }
+
+        Ok((deserialized, offset))
+    }
+}
+
 impl Sirius for String {
     fn serialize(&self, output: &mut Vec<u8>) -> usize {
         serialize_with_length_prefix(self.as_bytes(), output)
@@ -94,18 +163,6 @@ impl_sirius_for_numbers! {
     f32, f64
 }
 
-impl_sirius_for_array! {
-    u8, u16, u32, u64, u128,
-    i8, i16, i32, i64, i128,
-    f32, f64
-}
-
-impl_sirius_for_vector! {
-    u8, u16, u32, u64, u128,
-    i8, i16, i32, i64, i128,
-    f32, f64
-}
-
 #[test]
 fn test_char_sirius() {
     let original = '💯';
@@ -114,6 +171,22 @@ fn test_char_sirius() {
 
     assert_eq!(deserialized, original);
     assert_eq!(bytes_read, serialized.len());
+}
+
+#[test]
+fn test_array_sirius() {
+    let mut data: [u32; 100] = [69 as _; 100];
+    data.iter_mut().enumerate().for_each(|(idx, itm)| {
+        *itm = idx as _;
+    });
+
+    let v = data.serialize_buffered();
+    let (n, bytes_read) = <[u32; 100] as Sirius>::deserialize(&v).unwrap();
+
+    eprintln!("orig: {data:?}\ndeserialized: {n:?}");
+
+    assert!(data.iter().zip(n.iter()).all(|(&a, &b)| a == b));
+    assert_eq!(bytes_read, v.len());
 }
 
 #[test]
@@ -130,10 +203,11 @@ fn test_char_sirius_check() {
 
 #[test]
 fn test_vec_sirius() {
-    let original = b"The quick brown fox jumps over the lazy dog.".to_vec();
+    let original = "The quick brown fox jumps over the lazy dog.".chars().collect::<Vec<_>>();
     let serialized = original.serialize_buffered();
+    dbg!(serialized.len());
 
-    let (deserialized, bytes_read) = Vec::<u8>::deserialize(&serialized).unwrap();
+    let (deserialized, bytes_read) = Vec::<char>::deserialize(&serialized).unwrap();
 
     assert_eq!(deserialized, original);
     assert_eq!(bytes_read, serialized.len());

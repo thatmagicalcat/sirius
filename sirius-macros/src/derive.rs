@@ -36,7 +36,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
             let field_var_ident = make_ident(&format!("f{idx}"));
 
             quote! {
-                let #field_var_ident = <#ty as Sirius>::deserialize(&data.get(offset..)
+                let #field_var_ident = <#ty as Sirius>::deserialize(data.get(offset..)
                     .ok_or(SiriusError::NotEnoughData)?)?;
                 offset += #field_var_ident.1;
             }
