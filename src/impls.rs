@@ -1,5 +1,27 @@
 use crate::*;
 
+impl Sirius for String {
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
+        serialize_with_length_prefix(self.as_bytes(), output)
+    }
+
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
+        let deserialized =
+            deserialize_with_length_prefix(data, |i, _| String::from_utf8(i.to_vec()));
+
+        if let Ok((ref d, _)) = deserialized {
+            if let Err(e) = d {
+                return Err(SiriusError::ParsingError {
+                    ty_name: "String",
+                    error: e.to_string(),
+                });
+            }
+        }
+
+        deserialized.map(|(d, size)| (d.unwrap(), size))
+    }
+}
+
 impl<T: Sirius> Sirius for Box<T> {
     fn serialize(&self, output: &mut Vec<u8>) -> usize {
         T::serialize(self, output)
@@ -7,16 +29,6 @@ impl<T: Sirius> Sirius for Box<T> {
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
         T::deserialize(data).map(|(t, l)| (Box::new(t), l))
-    }
-}
-
-impl Sirius for Box<[u8]> {
-    fn serialize(&self, output: &mut Vec<u8>) -> usize {
-        serialize_with_length_prefix(self, output)
-    }
-
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
-        deserialize_with_length_prefix(data, |i, _| i.into())
     }
 }
 
