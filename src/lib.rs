@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 mod impls;
+mod macros;
 
 pub use sirius_macros::ByteMagic;
 
