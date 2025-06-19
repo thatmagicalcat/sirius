@@ -37,7 +37,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
 
             quote! {
                 let #field_var_ident = <#ty as Sirius>::deserialize(data.get(offset..)
-                    .ok_or(SiriusError::NotEnoughData)?)?;
+                    .ok_or(sirius::SiriusError::NotEnoughData)?)?;
                 offset += #field_var_ident.1;
             }
         }),
@@ -68,7 +68,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
                 bytes_written
             }
 
-            fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
+            fn deserialize(data: &[u8]) -> Result<(Self, usize), sirius::SiriusError> {
                 let mut offset = 0;
                 #(#deserialize_fields)*
 
@@ -141,7 +141,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
             syn::Fields::Unnamed(unnamed_fields) => {
                 let deserializer = unnamed_fields.unnamed.iter().map(
                     |syn::Field { ty, .. }| quote! {{
-                        let (data, inc) = <#ty as Sirius>::deserialize(&data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
+                        let (data, inc) = <#ty as Sirius>::deserialize(&data.get(offset..).ok_or(sirius::SiriusError::NotEnoughData)?)?;
                         offset += inc;
                         data
                     }}
@@ -156,7 +156,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                         let ident = ident.as_ref().unwrap();
                         quote! {
                             #ident: {
-                                let (data, inc) = <#ty as Sirius>::deserialize(&data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
+                                let (data, inc) = <#ty as Sirius>::deserialize(&data.get(offset..).ok_or(sirius::SiriusError::NotEnoughData)?)?;
                                 offset += inc;
                                 data
                             },

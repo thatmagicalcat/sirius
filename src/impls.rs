@@ -18,10 +18,9 @@ impl<T: Sirius> Sirius for Vec<T> {
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
         let mut offset = 0;
         let (data_len, bytes_read) = LengthPrefix::deserialize(data)?;
-        offset += bytes_read;
-
         let mut deserialized: Vec<T> = Vec::with_capacity(data_len as _);
-        dbg!(data_len);
+
+        offset += bytes_read;
         for _ in 0..data_len {
             let (elem, bytes_read) =
                 T::deserialize(data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
@@ -75,19 +74,10 @@ impl Sirius for String {
     }
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
-        let deserialized =
-            deserialize_with_length_prefix(data, |i, _| String::from_utf8(i.to_vec()));
+        deserialize_with_length_prefix(data, |i, _| unsafe {
+            String::from_utf8_unchecked(i.to_vec())
+        })
 
-        if let Ok((ref d, _)) = deserialized {
-            if let Err(e) = d {
-                return Err(SiriusError::ParsingError {
-                    ty_name: "String",
-                    error: e.to_string(),
-                });
-            }
-        }
-
-        deserialized.map(|(d, size)| (d.unwrap(), size))
     }
 }
 
@@ -203,9 +193,10 @@ fn test_char_sirius_check() {
 
 #[test]
 fn test_vec_sirius() {
-    let original = "The quick brown fox jumps over the lazy dog.".chars().collect::<Vec<_>>();
+    let original = "The quick brown fox jumps over the lazy dog."
+        .chars()
+        .collect::<Vec<_>>();
     let serialized = original.serialize_buffered();
-    dbg!(serialized.len());
 
     let (deserialized, bytes_read) = Vec::<char>::deserialize(&serialized).unwrap();
 
