@@ -1,7 +1,7 @@
 use crate::*;
 
 impl<T: Sirius> Sirius for Box<T> {
-    fn serialize(&self, output: &mut impl std::io::Write) -> usize {
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
         T::serialize(self, output)
     }
 
@@ -11,7 +11,7 @@ impl<T: Sirius> Sirius for Box<T> {
 }
 
 impl Sirius for Box<[u8]> {
-    fn serialize(&self, output: &mut impl std::io::Write) -> usize {
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
         serialize_with_length_prefix(self, output)
     }
 
@@ -21,7 +21,7 @@ impl Sirius for Box<[u8]> {
 }
 
 impl Sirius for Vec<u8> {
-    fn serialize(&self, output: &mut impl std::io::Write) -> usize {
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
         serialize_with_length_prefix(self, output)
     }
 
@@ -30,15 +30,13 @@ impl Sirius for Vec<u8> {
     }
 }
 
-fn serialize_with_length_prefix(slice: &[u8], output: &mut impl std::io::Write) -> usize {
+fn serialize_with_length_prefix(slice: &[u8], output: &mut Vec<u8>) -> usize {
     if slice.len() >= LengthPrefix::MAX as usize {
         panic!("size exceeded length prefix");
     }
 
-    output
-        .write_all(&(slice.len() as LengthPrefix).to_be_bytes())
-        .unwrap();
-    output.write_all(slice).unwrap();
+    output.extend_from_slice(&(slice.len() as LengthPrefix).to_be_bytes());
+    output.extend_from_slice(slice);
 
     slice.len() + LENGTH_BYTES
 }
@@ -65,8 +63,8 @@ fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
 }
 
 impl Sirius for char {
-    fn serialize(&self, output: &mut impl std::io::Write) -> usize {
-        output.write_all(&(*self as u32).to_be_bytes()).unwrap();
+    fn serialize(&self, output: &mut Vec<u8>) -> usize {
+        output.extend_from_slice(&(*self as u32).to_be_bytes());
         std::mem::size_of::<Self>()
     }
 

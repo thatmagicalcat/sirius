@@ -3,22 +3,22 @@ macro_rules! impl_bytemagic_for_array {
     [ $($t:ty),+ ] => {
         $(
             impl<const N: usize> Sirius for [$t; N] {
-                fn serialize(&self, output: &mut impl std::io::Write) -> usize {
+                fn serialize(&self, output: &mut Vec<u8>) -> usize {
                     let prefix_len = match N {
                         n if n < u8::MAX as usize => {
-                            output.write_all(&(N as u8).to_be_bytes()).unwrap();
+                            output.extend_from_slice(&(N as u8).to_be_bytes());
                             std::mem::size_of::<u8>()
                         }
                         n if n < u16::MAX as usize => {
-                            output.write_all(&(N as u16).to_be_bytes()).unwrap();
+                            output.extend_from_slice(&(N as u16).to_be_bytes());
                             std::mem::size_of::<u16>()
                         }
                         n if n < u32::MAX as usize => {
-                            output.write_all(&(N as u32).to_be_bytes()).unwrap();
+                            output.extend_from_slice(&(N as u32).to_be_bytes());
                             std::mem::size_of::<u32>()
                         }
                         n if n < u64::MAX as usize => {
-                            output.write_all(&(N as u64).to_be_bytes()).unwrap();
+                            output.extend_from_slice(&(N as u64).to_be_bytes());
                             std::mem::size_of::<u64>()
                         }
 
@@ -26,7 +26,7 @@ macro_rules! impl_bytemagic_for_array {
                     };
 
                     for i in self {
-                        output.write_all(&i.to_be_bytes()).unwrap();
+                        output.extend_from_slice(&i.to_be_bytes());
                     }
 
                     self.len() + prefix_len
@@ -128,8 +128,8 @@ macro_rules! impl_bytemagic_for_numbers {
     [ $($t:ty),+ ] => {
         $(
             impl Sirius for $t {
-                fn serialize(&self, output: &mut impl std::io::Write) -> usize {
-                    output.write_all(&self.to_be_bytes()).unwrap();
+                fn serialize(&self, output: &mut Vec<u8>) -> usize {
+                    output.extend_from_slice(&self.to_be_bytes());
                     std::mem::size_of::<Self>()
                 }
 
