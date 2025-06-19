@@ -31,7 +31,7 @@ impl Sirius for Vec<u8> {
 }
 
 fn serialize_with_length_prefix(slice: &[u8], output: &mut impl std::io::Write) -> usize {
-    if slice.len() >= LENGTH_BYTES {
+    if slice.len() >= LengthPrefix::MAX as usize {
         panic!("size exceeded length prefix");
     }
 
