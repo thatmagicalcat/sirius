@@ -1,37 +1,37 @@
 use crate::*;
 
-impl<T: ByteMagic> ByteMagic for Box<T> {
+impl<T: Sirius> Sirius for Box<T> {
     fn serialize(&self, output: &mut impl std::io::Write) -> usize {
         T::serialize(self, output)
     }
 
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), ByteMagicError> {
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
         T::deserialize(data).map(|(t, l)| (Box::new(t), l))
     }
 }
 
-impl ByteMagic for Box<[u8]> {
+impl Sirius for Box<[u8]> {
     fn serialize(&self, output: &mut impl std::io::Write) -> usize {
         serialize_with_length_prefix(self, output)
     }
 
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), ByteMagicError> {
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
         deserialize_with_length_prefix(data, |i, _| i.into())
     }
 }
 
-impl ByteMagic for Vec<u8> {
+impl Sirius for Vec<u8> {
     fn serialize(&self, output: &mut impl std::io::Write) -> usize {
         serialize_with_length_prefix(self, output)
     }
 
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), ByteMagicError> {
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
         deserialize_with_length_prefix(data, |i, _| i.into())
     }
 }
 
 fn serialize_with_length_prefix(slice: &[u8], output: &mut impl std::io::Write) -> usize {
-    if slice.len() >= LengthPrefix::MAX as usize {
+    if slice.len() >= LENGTH_BYTES {
         panic!("size exceeded length prefix");
     }
 
@@ -46,10 +46,10 @@ fn serialize_with_length_prefix(slice: &[u8], output: &mut impl std::io::Write) 
 fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
     data: &[u8],
     f: F,
-) -> Result<(T, usize), ByteMagicError> {
+) -> Result<(T, usize), SiriusError> {
     let len = u32::from_be_bytes(
         data.get(0..LENGTH_BYTES)
-            .ok_or(ByteMagicError::NotEnoughData)?
+            .ok_or(SiriusError::NotEnoughData)?
             .try_into()
             .unwrap(),
     ) as usize;
@@ -57,29 +57,29 @@ fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
     Ok((
         f(
             data.get(LENGTH_BYTES..len + LENGTH_BYTES)
-                .ok_or(ByteMagicError::NotEnoughData)?,
+                .ok_or(SiriusError::NotEnoughData)?,
             len + LENGTH_BYTES,
         ),
         len + LENGTH_BYTES,
     ))
 }
 
-impl ByteMagic for char {
+impl Sirius for char {
     fn serialize(&self, output: &mut impl std::io::Write) -> usize {
         output.write_all(&(*self as u32).to_be_bytes()).unwrap();
         std::mem::size_of::<Self>()
     }
 
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), ByteMagicError> {
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
         let raw = u32::from_be_bytes(
             data.get(..std::mem::size_of::<Self>())
-                .ok_or(ByteMagicError::NotEnoughData)?
+                .ok_or(SiriusError::NotEnoughData)?
                 .try_into()
                 .unwrap(),
         );
 
         Ok((
-            char::from_u32(raw).ok_or(ByteMagicError::ParsingError {
+            char::from_u32(raw).ok_or(SiriusError::ParsingError {
                 ty_name: "char",
                 error: format!("invalid character: {raw:X}"),
             })?,
@@ -115,7 +115,7 @@ fn test_char_bytemagic_check() {
     let data = 0x110000_u32.to_be_bytes();
     assert!(matches!(
         char::deserialize(&data),
-        Err(ByteMagicError::ParsingError {
+        Err(SiriusError::ParsingError {
             ty_name: "char",
             ..
         })

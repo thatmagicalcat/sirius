@@ -2,7 +2,7 @@
 macro_rules! impl_bytemagic_for_array {
     [ $($t:ty),+ ] => {
         $(
-            impl<const N: usize> ByteMagic for [$t; N] {
+            impl<const N: usize> Sirius for [$t; N] {
                 fn serialize(&self, output: &mut impl std::io::Write) -> usize {
                     let prefix_len = match N {
                         n if n < u8::MAX as usize => {
@@ -32,7 +32,7 @@ macro_rules! impl_bytemagic_for_array {
                     self.len() + prefix_len
                 }
 
-                fn deserialize(data: &[u8]) -> Result<(Self, usize), ByteMagicError>
+                fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError>
                 where
                     Self: Sized,
                 {
@@ -43,7 +43,7 @@ macro_rules! impl_bytemagic_for_array {
                                 prefix_len,
                                 u8::from_be_bytes(
                                     data.get(0..prefix_len)
-                                        .ok_or(ByteMagicError::NotEnoughData)?
+                                        .ok_or(SiriusError::NotEnoughData)?
                                         .try_into()
                                         .unwrap(),
                                 ) as usize,
@@ -55,7 +55,7 @@ macro_rules! impl_bytemagic_for_array {
                                 prefix_len,
                                 u16::from_be_bytes(
                                     data.get(0..prefix_len)
-                                        .ok_or(ByteMagicError::NotEnoughData)?
+                                        .ok_or(SiriusError::NotEnoughData)?
                                         .try_into()
                                         .unwrap(),
                                 ) as usize,
@@ -67,7 +67,7 @@ macro_rules! impl_bytemagic_for_array {
                                 prefix_len,
                                 u32::from_be_bytes(
                                     data.get(0..prefix_len)
-                                        .ok_or(ByteMagicError::NotEnoughData)?
+                                        .ok_or(SiriusError::NotEnoughData)?
                                         .try_into()
                                         .unwrap(),
                                 ) as usize,
@@ -79,7 +79,7 @@ macro_rules! impl_bytemagic_for_array {
                                 prefix_len,
                                 u64::from_be_bytes(
                                     data.get(0..prefix_len)
-                                        .ok_or(ByteMagicError::NotEnoughData)?
+                                        .ok_or(SiriusError::NotEnoughData)?
                                         .try_into()
                                         .unwrap(),
                                 ) as usize,
@@ -92,7 +92,7 @@ macro_rules! impl_bytemagic_for_array {
                     let data_size = data_len * std::mem::size_of::<$t>();
                     let data = data
                         .get(prefix_len..data_size + prefix_len)
-                        .ok_or(ByteMagicError::NotEnoughData)?;
+                        .ok_or(SiriusError::NotEnoughData)?;
                     let chunk_size = std::mem::size_of::<$t>();
 
                     let mut output: [$t; N] = [0 as _; N];
@@ -114,7 +114,7 @@ macro_rules! impl_bytemagic_for_array {
                 });
 
                 let v = data.serialize_buffered();
-                let (n, bytes_read) = <[$t; 100] as ByteMagic>::deserialize(&v).unwrap();
+                let (n, bytes_read) = <[$t; 100] as Sirius>::deserialize(&v).unwrap();
 
                 assert!(data.iter().zip(n.iter()).all(|(&a, &b)| a == b));
                 assert_eq!(bytes_read, v.len());
@@ -127,17 +127,17 @@ macro_rules! impl_bytemagic_for_array {
 macro_rules! impl_bytemagic_for_numbers {
     [ $($t:ty),+ ] => {
         $(
-            impl ByteMagic for $t {
+            impl Sirius for $t {
                 fn serialize(&self, output: &mut impl std::io::Write) -> usize {
                     output.write_all(&self.to_be_bytes()).unwrap();
                     std::mem::size_of::<Self>()
                 }
 
-                fn deserialize(data: &[u8]) -> Result<(Self, usize), ByteMagicError> {
+                fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
                     Ok((
                         Self::from_be_bytes(
                             data.get(..std::mem::size_of::<Self>())
-                                .ok_or(ByteMagicError::NotEnoughData)?
+                                .ok_or(SiriusError::NotEnoughData)?
                                 .try_into()
                                 .unwrap(),
                         ),
@@ -153,7 +153,7 @@ macro_rules! impl_bytemagic_for_numbers {
                 let n: $t = 69 as _;
 
                 let v = n.serialize_buffered();
-                let (m, bytes_read) = <$t as ByteMagic>::deserialize(&v).unwrap();
+                let (m, bytes_read) = <$t as Sirius>::deserialize(&v).unwrap();
 
                 assert_eq!(n, m);
                 assert_eq!(bytes_read, v.len());

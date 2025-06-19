@@ -27,7 +27,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
                 });
 
             quote! {
-                bytes_written += ByteMagic::serialize(&self.#field_name, output);
+                bytes_written += Sirius::serialize(&self.#field_name, output);
             }
         }),
         // deserialization
@@ -36,8 +36,8 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
             let field_var_ident = make_ident(&format!("f{idx}"));
 
             quote! {
-                let #field_var_ident = <#ty as ByteMagic>::deserialize(&data.get(offset..)
-                    .ok_or(ByteMagicError::NotEnoughData)?)?;
+                let #field_var_ident = <#ty as Sirius>::deserialize(&data.get(offset..)
+                    .ok_or(SiriusError::NotEnoughData)?)?;
                 offset += #field_var_ident.1;
             }
         }),
@@ -61,14 +61,14 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
     };
 
     quote! {
-        impl ByteMagic for #name {
+        impl Sirius for #name {
             fn serialize(&self, output: &mut Vec<u8>) -> usize {
                 let mut bytes_written = 0;
                 #(#serialize_fields)*
                 bytes_written
             }
 
-            fn deserialize(data: &[u8]) -> Result<(Self, usize), ByteMagicError> {
+            fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
                 let mut offset = 0;
                 #(#deserialize_fields)*
 
@@ -101,7 +101,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                     .map(|field_var_ident| quote! { #field_var_ident });
 
                 let serialize = iter
-                    .map(|field_var_ident| quote! { bytes_written += ByteMagic::serialize(#field_var_ident, output); });
+                    .map(|field_var_ident| quote! { bytes_written += Sirius::serialize(#field_var_ident, output); });
 
                 (quote! { (#(#destructure)*) }, quote! { #(#serialize)* })
             }
@@ -115,7 +115,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                 };
 
                 let serialize = iter
-                    .map(|field_var_ident| quote! { bytes_written += ByteMagic::serialize(#field_var_ident, output); });
+                    .map(|field_var_ident| quote! { bytes_written += Sirius::serialize(#field_var_ident, output); });
 
                 (destructure, quote! { #(#serialize)* })
             }
@@ -141,7 +141,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
             syn::Fields::Unnamed(unnamed_fields) => {
                 let deserializer = unnamed_fields.unnamed.iter().map(
                     |syn::Field { ty, .. }| quote! {{
-                        let (data, inc) = <#ty as ByteMagic>::deserialize(&data.get(offset..).ok_or(ByteMagicError::NotEnoughData)?)?;
+                        let (data, inc) = <#ty as Sirius>::deserialize(&data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
                         offset += inc;
                         data
                     }}
@@ -156,7 +156,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                         let ident = ident.as_ref().unwrap();
                         quote! {
                             #ident: {
-                                let (data, inc) = <#ty as ByteMagic>::deserialize(&data.get(offset..).ok_or(ByteMagicError::NotEnoughData)?)?;
+                                let (data, inc) = <#ty as Sirius>::deserialize(&data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
                                 offset += inc;
                                 data
                             },
@@ -179,7 +179,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
     });
 
     quote! {
-        impl ByteMagic for #name {
+        impl Sirius for #name {
             fn serialize(&self, output: &mut Vec<u8>) -> usize {
                 let mut bytes_written = 0;
 
@@ -190,9 +190,9 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                 bytes_written
             }
 
-            fn deserialize(data: &[u8]) -> Result<(Self, usize), ByteMagicError> {
+            fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
                 let mut offset = 0;
-                let (variant_index, shift) = <u32 as ByteMagic>::deserialize(data).unwrap();
+                let (variant_index, shift) = <u32 as Sirius>::deserialize(data).unwrap();
 
                 offset += shift;
 
