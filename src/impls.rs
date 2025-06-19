@@ -32,16 +32,6 @@ impl<T: Sirius> Sirius for Box<T> {
     }
 }
 
-impl Sirius for Vec<u8> {
-    fn serialize(&self, output: &mut Vec<u8>) -> usize {
-        serialize_with_length_prefix(self, output)
-    }
-
-    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
-        deserialize_with_length_prefix(data, |i, _| i.into())
-    }
-}
-
 fn serialize_with_length_prefix(slice: &[u8], output: &mut Vec<u8>) -> usize {
     if slice.len() >= LengthPrefix::MAX as usize {
         panic!("size exceeded length prefix");
@@ -98,20 +88,26 @@ impl Sirius for char {
     }
 }
 
-impl_bytemagic_for_numbers! {
+impl_sirius_for_numbers! {
     u8, u16, u32, u64, u128,
     i8, i16, i32, i64, i128,
     f32, f64
 }
 
-impl_bytemagic_for_array! {
+impl_sirius_for_array! {
+    u8, u16, u32, u64, u128,
+    i8, i16, i32, i64, i128,
+    f32, f64
+}
+
+impl_sirius_for_vector! {
     u8, u16, u32, u64, u128,
     i8, i16, i32, i64, i128,
     f32, f64
 }
 
 #[test]
-fn test_char_bytemagic() {
+fn test_char_sirius() {
     let original = '💯';
     let serialized = original.serialize_buffered();
     let (deserialized, bytes_read) = char::deserialize(&serialized).unwrap();
@@ -121,7 +117,7 @@ fn test_char_bytemagic() {
 }
 
 #[test]
-fn test_char_bytemagic_check() {
+fn test_char_sirius_check() {
     let data = 0x110000_u32.to_be_bytes();
     assert!(matches!(
         char::deserialize(&data),
@@ -133,7 +129,7 @@ fn test_char_bytemagic_check() {
 }
 
 #[test]
-fn test_vec_bytemagic() {
+fn test_vec_sirius() {
     let original = b"The quick brown fox jumps over the lazy dog.".to_vec();
     let serialized = original.serialize_buffered();
 

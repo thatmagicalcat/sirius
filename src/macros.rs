@@ -1,5 +1,59 @@
 #[macro_export]
-macro_rules! impl_bytemagic_for_array {
+macro_rules! impl_sirius_for_vector {
+    [ $($t:ty),+ ] => {
+        $(
+            impl Sirius for Vec<$t> {
+                fn serialize(&self, output: &mut Vec<u8>) -> usize {
+                    let size = self.len() * std::mem::size_of::<$t>();
+                    if size >= LengthPrefix::MAX as usize {
+                        panic!("vector's length is greater than LengthPrefix::MAX");
+                    }
+
+                    output.extend_from_slice(&(size as LengthPrefix).to_be_bytes());
+                    output.reserve(size);
+
+                    for i in self {
+                        output.extend_from_slice(&i.to_be_bytes());
+                    }
+
+                    size + LENGTH_BYTES
+                }
+
+                fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
+                    deserialize_with_length_prefix(data, |data, data_len| {
+                        let chunk_size = std::mem::size_of::<$t>();
+                        let mut output: Vec<$t> = vec![0 as _; (data_len - LENGTH_BYTES) / std::mem::size_of::<$t>()];
+
+                        for (idx, chunk) in data.chunks_exact(chunk_size).enumerate() {
+                            output[idx] = <$t>::from_be_bytes(chunk.try_into().unwrap());
+                        }
+
+                        output
+                    })
+                }
+            }
+        )+
+
+        #[test]
+        fn test_vector_sirius() {
+            $(
+                let mut data: Vec<$t> = vec![69 as _; 100];
+                data.iter_mut().enumerate().for_each(|(idx, itm)| {
+                    *itm = idx as _;
+                });
+
+                let v = data.serialize_buffered();
+                let (n, bytes_read) = <Vec<$t> as Sirius>::deserialize(&v).unwrap();
+
+                assert!(data.iter().zip(n.iter()).all(|(&a, &b)| a == b));
+                assert_eq!(bytes_read, v.len());
+            )+
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! impl_sirius_for_array {
     [ $($t:ty),+ ] => {
         $(
             impl<const N: usize> Sirius for [$t; N] {
@@ -106,7 +160,7 @@ macro_rules! impl_bytemagic_for_array {
         )+
 
         #[test]
-        fn test_array_bytemagic() {
+        fn test_array_sirius() {
             $(
                 let mut data: [$t; 100] = [69 as _; 100];
                 data.iter_mut().enumerate().for_each(|(idx, itm)| {
@@ -124,7 +178,7 @@ macro_rules! impl_bytemagic_for_array {
 }
 
 #[macro_export]
-macro_rules! impl_bytemagic_for_numbers {
+macro_rules! impl_sirius_for_numbers {
     [ $($t:ty),+ ] => {
         $(
             impl Sirius for $t {
@@ -148,7 +202,7 @@ macro_rules! impl_bytemagic_for_numbers {
         )+
 
         #[test]
-        fn test_numeric_bytemagic() {
+        fn test_numeric_sirius() {
             $(
                 let n: $t = 69 as _;
 
