@@ -205,7 +205,11 @@ fn impl_enum(
                 Ok((
                     match variant_index {
                         #(#deserialize)*
-                        _ => unreachable!()
+
+                        _ => return Err(sirius::SiriusError::ParsingError {
+                            ty_name: stringify!(#name),
+                            error: format!("invalid variant index: {}", variant_index),
+                        }),
                     },
                     offset
                 ))
