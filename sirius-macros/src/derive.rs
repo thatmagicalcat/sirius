@@ -91,7 +91,7 @@ fn impl_enum(
     let serialize = variants.iter().enumerate().map(|(variant_idx, variant)| {
         let (destructure, serialize) = match &variant.fields {
             syn::Fields::Unnamed(unnamed_fields) => {
-                let iter = unnamed_fields
+                let field_idents = unnamed_fields
                     .unnamed
                     .iter()
                     .enumerate()
@@ -102,26 +102,26 @@ fn impl_enum(
                         )
                     });
 
-                let destructure = iter
+                let destructure = field_idents
                     .clone()
-                    .map(|field_var_ident| quote! { #field_var_ident });
+                    .map(|field_ident| quote! { #field_ident });
 
-                let serialize = iter
-                    .map(|field_var_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_var_ident, output); });
+                let serialize = field_idents
+                    .map(|field_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_ident, output); });
 
                 (quote! { (#(#destructure)*) }, quote! { #(#serialize)* })
             }
 
             syn::Fields::Named(named_fields) => {
-                let iter = named_fields.named.iter().map(|i| i.ident.as_ref().unwrap());
+                let field_idents = named_fields.named.iter().map(|i| i.ident.as_ref().unwrap());
 
                 let destructure = {
-                    let iter = iter.clone();
-                    quote! { { #(#iter),* } }
+                    let field_idents = field_idents.clone();
+                    quote! { { #(#field_idents),* } }
                 };
 
-                let serialize = iter
-                    .map(|field_var_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_var_ident, output); });
+                let serialize = field_idents
+                    .map(|field_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_ident, output); });
 
                 (destructure, quote! { #(#serialize)* })
             }
