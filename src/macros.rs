@@ -3,9 +3,9 @@ macro_rules! impl_sirius_for_numbers {
     [ $($t:ty),+ $(,)? ] => {
         $(
             impl Sirius for $t {
-                fn serialize(&self, output: &mut impl std::io::Write) -> usize {
-                    output.write_all(&self.to_be_bytes()).unwrap();
-                    std::mem::size_of::<Self>()
+                fn serialize(&self, output: &mut impl std::io::Write) -> Result<usize, SiriusError> {
+                    output.write_all(&self.to_be_bytes())?;
+                    Ok(std::mem::size_of::<Self>())
                 }
 
                 fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
@@ -14,7 +14,7 @@ macro_rules! impl_sirius_for_numbers {
                             data.get(..std::mem::size_of::<Self>())
                                 .ok_or(SiriusError::NotEnoughData)?
                                 .try_into()
-                                .unwrap(),
+                                .expect("slice length is std::mem::size_of::<Self>() bytes"),
                         ),
                         std::mem::size_of::<Self>(),
                     ))

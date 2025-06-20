@@ -55,9 +55,9 @@ fn test_enum_sirius() {
 
     let mut serialized = Vec::new();
 
-    original_a.serialize(&mut serialized);
-    original_b.serialize(&mut serialized);
-    original_c.serialize(&mut serialized);
+    original_a.serialize(&mut serialized).unwrap();
+    original_b.serialize(&mut serialized).unwrap();
+    original_c.serialize(&mut serialized).unwrap();
 
     #[rustfmt::skip]
     assert_eq!(

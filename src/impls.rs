@@ -3,13 +3,17 @@ use crate::*;
 use std::io::Write;
 
 impl<T: Sirius> Sirius for Vec<T> {
-    fn serialize(&self, output: &mut impl Write) -> usize {
+    fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
         if self.len() >= LengthPrefix::MAX as usize {
             panic!("length is greater than LengthPrefix::MAX");
         }
 
-        output.write_all(&(self.len() as LengthPrefix).to_be_bytes()).unwrap();
-        self.iter().map(|i| i.serialize(output)).sum::<usize>() + LENGTH_BYTES
+        output.write_all(&(self.len() as LengthPrefix).to_be_bytes())?;
+        Ok(LENGTH_BYTES
+            + self
+                .iter()
+                .map(|item| item.serialize(output))
+                .sum::<Result<usize, SiriusError>>()?)
     }
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
@@ -36,13 +40,17 @@ impl<T: Sirius> Sirius for Vec<T> {
 }
 
 impl<T: Sirius, const N: usize> Sirius for [T; N] {
-    fn serialize(&self, output: &mut impl Write) -> usize {
+    fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
         if N >= LengthPrefix::MAX as usize {
             panic!("length is greater than LengthPrefix::MAX");
         }
 
-        output.write_all(&(self.len() as LengthPrefix).to_be_bytes()).unwrap();
-        self.iter().map(|i| i.serialize(output)).sum::<usize>() + LENGTH_BYTES
+        output.write_all(&(self.len() as LengthPrefix).to_be_bytes())?;
+        Ok(LENGTH_BYTES
+            + self
+                .iter()
+                .map(|i| i.serialize(output))
+                .sum::<Result<usize, SiriusError>>()?)
     }
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
@@ -66,7 +74,7 @@ impl<T: Sirius, const N: usize> Sirius for [T; N] {
 }
 
 impl Sirius for String {
-    fn serialize(&self, output: &mut impl Write) -> usize {
+    fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
         serialize_with_length_prefix(self.as_bytes(), output)
     }
 
@@ -84,7 +92,7 @@ impl Sirius for String {
 }
 
 impl<T: Sirius> Sirius for Box<T> {
-    fn serialize(&self, output: &mut impl Write) -> usize {
+    fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
         T::serialize(self, output)
     }
 
@@ -93,15 +101,18 @@ impl<T: Sirius> Sirius for Box<T> {
     }
 }
 
-fn serialize_with_length_prefix(slice: &[u8], output: &mut impl Write) -> usize {
+fn serialize_with_length_prefix(
+    slice: &[u8],
+    output: &mut impl Write,
+) -> Result<usize, SiriusError> {
     if slice.len() >= LengthPrefix::MAX as usize {
         panic!("size exceeded length prefix");
     }
 
-    output.write_all(&(slice.len() as LengthPrefix).to_be_bytes()).unwrap();
-    output.write_all(slice).unwrap();
+    output.write_all(&(slice.len() as LengthPrefix).to_be_bytes())?;
+    output.write_all(slice)?;
 
-    slice.len() + LENGTH_BYTES
+    Ok(slice.len() + LENGTH_BYTES)
 }
 
 fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
@@ -112,7 +123,7 @@ fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
         data.get(0..LENGTH_BYTES)
             .ok_or(SiriusError::NotEnoughData)?
             .try_into()
-            .unwrap(),
+            .expect("slice length is always 4 bytes because of LENGHT_BYTES constant"),
     ) as usize;
 
     Ok((
@@ -126,9 +137,9 @@ fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
 }
 
 impl Sirius for char {
-    fn serialize(&self, output: &mut impl Write) -> usize {
-        output.write_all(&(*self as u32).to_be_bytes()).unwrap();
-        std::mem::size_of::<Self>()
+    fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
+        output.write_all(&(*self as u32).to_be_bytes())?;
+        Ok(std::mem::size_of::<Self>())
     }
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
@@ -136,7 +147,7 @@ impl Sirius for char {
             data.get(..std::mem::size_of::<Self>())
                 .ok_or(SiriusError::NotEnoughData)?
                 .try_into()
-                .unwrap(),
+                .expect("slice length is always 4 bytes because of std::mem::size_of::<Self>() constant"),
         );
 
         Ok((

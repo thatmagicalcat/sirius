@@ -29,7 +29,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
                 });
 
             quote! {
-                bytes_written += sirius::Sirius::serialize(&self.#field_name, output);
+                bytes_written += sirius::Sirius::serialize(&self.#field_name, output)?;
             }
         }),
         // deserialization
@@ -64,10 +64,10 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
 
     quote! {
         impl sirius::Sirius for #name {
-            fn serialize(&self, output: &mut impl std::io::Write) -> usize {
+            fn serialize(&self, output: &mut impl std::io::Write) -> Result<usize, sirius::SiriusError> {
                 let mut bytes_written = 0;
                 #(#serialize_fields)*
-                bytes_written
+                Ok(bytes_written)
             }
 
             fn deserialize(data: &[u8]) -> Result<(Self, usize), sirius::SiriusError> {
@@ -116,7 +116,7 @@ fn impl_enum(
                     .map(|field_ident| quote! { #field_ident });
 
                 let serialize = field_idents
-                    .map(|field_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_ident, output); });
+                    .map(|field_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_ident, output)?; });
 
                 (quote! { (#(#destructure)*) }, quote! { #(#serialize)* })
             }
@@ -130,7 +130,7 @@ fn impl_enum(
                 };
 
                 let serialize = field_idents
-                    .map(|field_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_ident, output); });
+                    .map(|field_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_ident, output)?; });
 
                 (destructure, quote! { #(#serialize)* })
             }
@@ -145,7 +145,7 @@ fn impl_enum(
 
         quote! {
             Self::#variant_name #destructure => {
-                bytes_written += (#variant_idx as u8).serialize(output);
+                bytes_written += (#variant_idx as u8).serialize(output)?;
                 #serialize
             }
         }
@@ -195,19 +195,19 @@ fn impl_enum(
 
     quote! {
         impl sirius::Sirius for #name {
-            fn serialize(&self, output: &mut impl std::io::Write) -> usize {
+            fn serialize(&self, output: &mut impl std::io::Write) -> Result<usize, sirius::SiriusError> {
                 let mut bytes_written = 0;
 
                 match self {
                     #(#serialize)*
                 }
 
-                bytes_written
+                Ok(bytes_written)
             }
 
             fn deserialize(data: &[u8]) -> Result<(Self, usize), sirius::SiriusError> {
                 let mut offset = 0;
-                let (variant_index, shift) = <u8 as sirius::Sirius>::deserialize(data).unwrap();
+                let (variant_index, shift) = <u8 as sirius::Sirius>::deserialize(data)?;
 
                 offset += shift;
 
