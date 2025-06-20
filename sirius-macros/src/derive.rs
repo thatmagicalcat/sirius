@@ -8,8 +8,9 @@ pub fn derive(ast: &syn::DeriveInput) -> TokenStream {
     match &ast.data {
         syn::Data::Struct(struct_data) => impl_struct(name, struct_data),
         syn::Data::Enum(enum_data) => impl_enum(name, enum_data, ast.attrs.clone()),
-
-        _ => panic!(),
+        syn::Data::Union(_) => {
+            panic!("Sirius does not support unions, only structs and enums are supported")
+        }
     }
 }
 
