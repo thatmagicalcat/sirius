@@ -29,7 +29,7 @@ pub trait Sirius {
         let mut data = vec![];
         _ = Sirius::serialize(self, &mut data);
         data
-    }    
+    }
 }
 
 #[derive(Debug, Error)]
