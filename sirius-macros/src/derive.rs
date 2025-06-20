@@ -1,12 +1,13 @@
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::Attribute;
 
 pub fn derive(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
 
     match &ast.data {
         syn::Data::Struct(struct_data) => impl_struct(name, struct_data),
-        syn::Data::Enum(enum_data) => impl_enum(name, enum_data),
+        syn::Data::Enum(enum_data) => impl_enum(name, enum_data, ast.attrs.clone()),
 
         _ => panic!(),
     }
@@ -27,7 +28,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
                 });
 
             quote! {
-                bytes_written += Sirius::serialize(&self.#field_name, output);
+                bytes_written += sirius::Sirius::serialize(&self.#field_name, output);
             }
         }),
         // deserialization
@@ -36,7 +37,7 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
             let field_var_ident = make_ident(&format!("f{idx}"));
 
             quote! {
-                let #field_var_ident = <#ty as Sirius>::deserialize(data.get(offset..)
+                let #field_var_ident = <#ty as sirius::Sirius>::deserialize(data.get(offset..)
                     .ok_or(sirius::SiriusError::NotEnoughData)?)?;
                 offset += #field_var_ident.1;
             }
@@ -61,8 +62,8 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
     };
 
     quote! {
-        impl Sirius for #name {
-            fn serialize(&self, output: &mut Vec<u8>) -> usize {
+        impl sirius::Sirius for #name {
+            fn serialize(&self, output: &mut impl std::io::Write) -> usize {
                 let mut bytes_written = 0;
                 #(#serialize_fields)*
                 bytes_written
@@ -81,7 +82,11 @@ fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStru
     .into()
 }
 
-fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) -> TokenStream {
+fn impl_enum(
+    name: &syn::Ident,
+    syn::DataEnum { variants, .. }: &syn::DataEnum,
+    _attrs: Vec<Attribute>,
+) -> TokenStream {
     let serialize = variants.iter().enumerate().map(|(variant_idx, variant)| {
         let (destructure, serialize) = match &variant.fields {
             syn::Fields::Unnamed(unnamed_fields) => {
@@ -101,7 +106,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                     .map(|field_var_ident| quote! { #field_var_ident });
 
                 let serialize = iter
-                    .map(|field_var_ident| quote! { bytes_written += Sirius::serialize(#field_var_ident, output); });
+                    .map(|field_var_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_var_ident, output); });
 
                 (quote! { (#(#destructure)*) }, quote! { #(#serialize)* })
             }
@@ -115,7 +120,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                 };
 
                 let serialize = iter
-                    .map(|field_var_ident| quote! { bytes_written += Sirius::serialize(#field_var_ident, output); });
+                    .map(|field_var_ident| quote! { bytes_written += sirius::Sirius::serialize(#field_var_ident, output); });
 
                 (destructure, quote! { #(#serialize)* })
             }
@@ -141,7 +146,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
             syn::Fields::Unnamed(unnamed_fields) => {
                 let deserializer = unnamed_fields.unnamed.iter().map(
                     |syn::Field { ty, .. }| quote! {{
-                        let (data, inc) = <#ty as Sirius>::deserialize(&data.get(offset..).ok_or(sirius::SiriusError::NotEnoughData)?)?;
+                        let (data, inc) = <#ty as sirius::Sirius>::deserialize(&data.get(offset..).ok_or(sirius::SiriusError::NotEnoughData)?)?;
                         offset += inc;
                         data
                     }}
@@ -156,7 +161,7 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                         let ident = ident.as_ref().unwrap();
                         quote! {
                             #ident: {
-                                let (data, inc) = <#ty as Sirius>::deserialize(&data.get(offset..).ok_or(sirius::SiriusError::NotEnoughData)?)?;
+                                let (data, inc) = <#ty as sirius::Sirius>::deserialize(&data.get(offset..).ok_or(sirius::SiriusError::NotEnoughData)?)?;
                                 offset += inc;
                                 data
                             },
@@ -179,8 +184,8 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
     });
 
     quote! {
-        impl Sirius for #name {
-            fn serialize(&self, output: &mut Vec<u8>) -> usize {
+        impl sirius::Sirius for #name {
+            fn serialize(&self, output: &mut impl std::io::Write) -> usize {
                 let mut bytes_written = 0;
 
                 match self {
@@ -190,9 +195,9 @@ fn impl_enum(name: &syn::Ident, syn::DataEnum { variants, .. }: &syn::DataEnum) 
                 bytes_written
             }
 
-            fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
+            fn deserialize(data: &[u8]) -> Result<(Self, usize), sirius::SiriusError> {
                 let mut offset = 0;
-                let (variant_index, shift) = <u32 as Sirius>::deserialize(data).unwrap();
+                let (variant_index, shift) = <u32 as sirius::Sirius>::deserialize(data).unwrap();
 
                 offset += shift;
 

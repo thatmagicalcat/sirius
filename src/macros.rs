@@ -3,8 +3,8 @@ macro_rules! impl_sirius_for_numbers {
     [ $($t:ty),+ $(,)? ] => {
         $(
             impl Sirius for $t {
-                fn serialize(&self, output: &mut Vec<u8>) -> usize {
-                    output.extend_from_slice(&self.to_be_bytes());
+                fn serialize(&self, output: &mut impl std::io::Write) -> usize {
+                    output.write_all(&self.to_be_bytes()).unwrap();
                     std::mem::size_of::<Self>()
                 }
 

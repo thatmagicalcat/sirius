@@ -18,7 +18,7 @@ const LENGTH_BYTES: usize = std::mem::size_of::<LengthPrefix>();
 /// the [serialize_buffered] function.
 pub trait Sirius {
     /// Write the serialized data to output and return the number of bytes written
-    fn serialize(&self, output: &mut Vec<u8>) -> usize;
+    fn serialize(&self, output: &mut impl std::io::Write) -> usize;
 
     /// Deserialize the data and return the number of bytes read
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError>

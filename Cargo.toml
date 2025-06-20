@@ -9,3 +9,7 @@ description = "A binary serialization/deserialization library"
 [dependencies]
 sirius-macros = { version = "0.1.0", path = "sirius-macros" }
 thiserror = "2.0.12"
+
+# For profiling
+# [profile.release]
+# debug = true
