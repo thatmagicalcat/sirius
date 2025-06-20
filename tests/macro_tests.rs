@@ -16,6 +16,21 @@ fn test_struct_sirius() {
     };
 
     let serialized = original.serialize_buffered();
+    assert_eq!(
+        serialized,
+        vec![
+            0, 0, 0, 42, // a
+            0, 0, 0, 13, // length of b
+            72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33, // "Hello, world!"
+            0, 0, 0, 5, // length of c
+            0, 0, 0, 72, // 'H'
+            0, 0, 0, 101, // 'e'
+            0, 0, 0, 108, // 'l'
+            0, 0, 0, 108, // 'l'
+            0, 0, 0, 111 // 'o'
+        ]
+    );
+
     let (deserialized, bytes_read) = TestStruct::deserialize(&serialized).unwrap();
 
     assert_eq!(deserialized, original);
@@ -43,6 +58,22 @@ fn test_enum_sirius() {
     original_a.serialize(&mut serialized);
     original_b.serialize(&mut serialized);
     original_c.serialize(&mut serialized);
+
+    #[rustfmt::skip]
+    assert_eq!(
+        serialized,
+        vec![
+            0, // VariantA
+            0, 0, 0, 10, // x
+            0, 0, 0, 5, // length of y
+            72, 101, 108, 108, 111, // "Hello"
+
+            1,   // VariantB
+            0, 42, // value of VariantB
+
+            2,  // VariantC (no data)
+        ]
+    );
 
     let mut offset = 0;
     let (deserialized_a, bytes_read_a) = TestEnum::deserialize(&serialized[offset..]).unwrap();
