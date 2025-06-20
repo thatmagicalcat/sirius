@@ -88,6 +88,15 @@ fn impl_enum(
     syn::DataEnum { variants, .. }: &syn::DataEnum,
     _attrs: Vec<Attribute>,
 ) -> TokenStream {
+    let num_variants = variants.len();
+
+    if num_variants > u8::MAX as usize {
+        panic!(
+            "Sirius does not support enums with more than 255 variants, found {}",
+            num_variants
+        );
+    }
+
     let serialize = variants.iter().enumerate().map(|(variant_idx, variant)| {
         let (destructure, serialize) = match &variant.fields {
             syn::Fields::Unnamed(unnamed_fields) => {
@@ -136,7 +145,7 @@ fn impl_enum(
 
         quote! {
             Self::#variant_name #destructure => {
-                bytes_written += (#variant_idx as u32).serialize(output);
+                bytes_written += (#variant_idx as u8).serialize(output);
                 #serialize
             }
         }
@@ -176,7 +185,7 @@ fn impl_enum(
             syn::Fields::Unit => proc_macro2::TokenStream::new(),
         };
 
-        let variant_idx = variant_idx as u32;
+        let variant_idx = variant_idx as u8;
         let variant_name = &variant.ident;
 
         quote! {
@@ -198,7 +207,7 @@ fn impl_enum(
 
             fn deserialize(data: &[u8]) -> Result<(Self, usize), sirius::SiriusError> {
                 let mut offset = 0;
-                let (variant_index, shift) = <u32 as sirius::Sirius>::deserialize(data).unwrap();
+                let (variant_index, shift) = <u8 as sirius::Sirius>::deserialize(data).unwrap();
 
                 offset += shift;
 
