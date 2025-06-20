@@ -19,15 +19,20 @@ impl<T: Sirius> Sirius for Vec<T> {
         let mut offset = 0;
         let (data_len, bytes_read) = LengthPrefix::deserialize(data)?;
         let mut deserialized: Vec<T> = Vec::with_capacity(data_len as _);
+        let ptr = deserialized.as_mut_ptr();
 
         offset += bytes_read;
-        for _ in 0..data_len {
+        for i in 0..data_len {
             let (elem, bytes_read) =
                 T::deserialize(data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
 
             offset += bytes_read;
-            deserialized.push(elem);
+
+            // SAFETY: Vector is pre-allocated, so this is safe
+            unsafe { ptr.add(i as _).write(elem) };
         }
+
+        unsafe { deserialized.set_len(data_len as _) };
 
         Ok((deserialized, offset))
     }
@@ -77,7 +82,6 @@ impl Sirius for String {
         deserialize_with_length_prefix(data, |i, _| unsafe {
             String::from_utf8_unchecked(i.to_vec())
         })
-
     }
 }
 
@@ -150,7 +154,7 @@ impl Sirius for char {
 impl_sirius_for_numbers! {
     u8, u16, u32, u64, u128,
     i8, i16, i32, i64, i128,
-    f32, f64
+    f32, f64, usize, isize
 }
 
 #[test]

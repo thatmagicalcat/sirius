@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! impl_sirius_for_numbers {
-    [ $($t:ty),+ ] => {
+    [ $($t:ty),+ $(,)? ] => {
         $(
             impl Sirius for $t {
                 fn serialize(&self, output: &mut Vec<u8>) -> usize {
