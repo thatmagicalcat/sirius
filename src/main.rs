@@ -11,17 +11,17 @@ enum Foo {
 fn main() -> Result<(), sirius::SiriusError> {
     let mut v = Vec::<u8>::new();
 
-    let foo = Foo::A { a: "Hello".into() };
-    foo.serialize(&mut v)?;
+    let a = Foo::A { a: "Hello".into() };
+    a.serialize(&mut v)?;
 
-    let foo = Foo::B(42);
-    foo.serialize(&mut v)?;
+    let b = Foo::B(42);
+    b.serialize(&mut v)?;
 
-    let foo = Foo::C;
-    foo.serialize(&mut v)?;
+    let c = Foo::C;
+    c.serialize(&mut v)?;
 
-    let foo = Foo::D;
-    foo.serialize(&mut v)?;
+    let d = Foo::D;
+    d.serialize(&mut v)?;
 
     dbg!(v);
 

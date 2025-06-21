@@ -1,6 +1,6 @@
 [package]
 name = "sirius"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 authors = ["thatmagicalcat <thatmagicalcat@hotmail.com>"]
@@ -9,7 +9,3 @@ description = "A binary serialization/deserialization library"
 [dependencies]
 sirius-macros = { version = "0.1.0", path = "sirius-macros" }
 thiserror = "2.0.12"
-
-# For profiling
-# [profile.release]
-# debug = true
