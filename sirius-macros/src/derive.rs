@@ -14,6 +14,33 @@ pub fn derive(ast: &syn::DeriveInput) -> TokenStream {
     }
 }
 
+/// # Struct Serialization & Deserialization
+///
+/// ## Serialization
+/// The generated `serialize` method writes each field to the provided output sequentially:
+/// ```no_run,rust
+/// fn serialize(&self, output: &mut impl std::io::Write) -> usize {
+///     let mut bytes_written = 0;
+///     bytes_written += sirius::Sirius::serialize(&self.field1, output);
+///     bytes_written += sirius::Sirius::serialize(&self.field2, output);
+///     // ...
+///     bytes_written
+/// }
+/// ```
+///
+/// ## Deserialization
+/// The generated `deserialize` method reads each field in the same order:
+/// ```no_run,rust
+/// fn deserialize(data: &[u8]) -> Result<(Self, usize), sirius::SiriusError> {
+///     let mut offset = 0;
+///     let field1 = T1::deserialize(data.get(offset..).ok_or(...)?)?; offset += field1.1;
+///     let field2 = T2::deserialize(data.get(offset..).ok_or(...)?)?; offset += field2.1;
+///     // ...
+///     Ok((Self { field1: field1.0, field2: field2.0, /* ... */ }, offset))
+/// }
+/// ```
+///
+/// Tuple structs are supported as well; construction switches to `Self(field1.0, field2.0, ...)`.
 fn impl_struct(name: &syn::Ident, syn::DataStruct { fields, .. }: &syn::DataStruct) -> TokenStream {
     let is_tuple_struct = matches!(fields, syn::Fields::Unnamed(..));
     let (serialize_fields, deserialize_fields, collection) = (
