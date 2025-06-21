@@ -1,10 +1,11 @@
 [package]
 name = "sirius"
 version = "0.1.1"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 authors = ["thatmagicalcat <thatmagicalcat@hotmail.com>"]
 description = "A binary serialization/deserialization library"
+repository = "https://github.com/thatmagicalcat/sirius"
 
 [dependencies]
 sirius-macros = { version = "0.1.0", path = "sirius-macros" }

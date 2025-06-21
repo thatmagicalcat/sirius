@@ -5,6 +5,7 @@ edition = "2024"
 license = "MIT"
 authors = ["thatmagicalcat <thatmagicalcat@hotmail.com>"]
 description = "Macros for sirius"
+repository = "https://github.com/thatmagicalcat/sirius"
 
 [dependencies]
 proc-macro2 = "1.0.94"
