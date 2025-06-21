@@ -186,8 +186,6 @@ fn test_array_sirius() {
     let v = data.serialize_buffered();
     let (n, bytes_read) = <[u32; 100] as Sirius>::deserialize(&v).unwrap();
 
-    eprintln!("orig: {data:?}\ndeserialized: {n:?}");
-
     assert!(data.iter().zip(n.iter()).all(|(&a, &b)| a == b));
     assert_eq!(bytes_read, v.len());
 }
