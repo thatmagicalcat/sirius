@@ -37,6 +37,9 @@ pub enum SiriusError {
     #[error("ran out of data bytes while parsing, cannot deserialize the remaining fields")]
     NotEnoughData,
 
+    #[error("alleged slice length exceeded the maximum allowed length")]
+    Overflow,
+
     #[error("failed to parse data as `{ty_name}`: {error}")]
     ParsingError {
         ty_name: &'static str,

@@ -5,7 +5,7 @@ use std::io::Write;
 impl<T: Sirius> Sirius for Vec<T> {
     fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
         if self.len() >= LengthPrefix::MAX as usize {
-            panic!("length is greater than LengthPrefix::MAX");
+            return Err(SiriusError::Overflow);
         }
 
         output.write_all(&(self.len() as LengthPrefix).to_be_bytes())?;
@@ -95,7 +95,7 @@ fn serialize_with_length_prefix(
     output: &mut impl Write,
 ) -> Result<usize, SiriusError> {
     if slice.len() >= LengthPrefix::MAX as usize {
-        panic!("size exceeded length prefix");
+        return Err(SiriusError::Overflow);
     }
 
     output.write_all(&(slice.len() as LengthPrefix).to_be_bytes())?;
