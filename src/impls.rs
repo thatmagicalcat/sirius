@@ -1,6 +1,6 @@
 use crate::*;
 
-use std::io::Write;
+use std::{cmp::min, io::Write};
 
 impl<T: Sirius> Sirius for Vec<T> {
     fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
@@ -127,25 +127,27 @@ fn deserialize_with_length_prefix<T, F: FnOnce(&[u8], usize) -> T>(
 
 impl Sirius for char {
     fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
-        output.write_all(&(*self as u32).to_be_bytes())?;
-        Ok(std::mem::size_of::<Self>())
+        let mut buf = [0u8; 4];
+        let encoded = self.encode_utf8(&mut buf);
+        output.write_all(encoded.as_bytes())?;
+        Ok(encoded.len())
     }
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
-        let raw = u32::from_be_bytes(
-            data.get(..std::mem::size_of::<Self>())
-                .ok_or(SiriusError::NotEnoughData)?
-                .try_into()
-                .expect("slice length is always 4 bytes because of std::mem::size_of::<Self>() constant"),
-        );
-
-        Ok((
-            char::from_u32(raw).ok_or(SiriusError::ParsingError {
-                ty_name: "char",
-                error: format!("invalid character: {raw:X}"),
-            })?,
-            std::mem::size_of::<Self>(),
-        ))
+        // Try to decode a char from the first 1 to 4 bytes
+        for len in 1..=min(4, data.len()) {
+            if let Ok(s) = std::str::from_utf8(&data[..len]) {
+                if let Some(ch) = s.chars().next() {
+                    if ch.len_utf8() == len {
+                        return Ok((ch, len));
+                    }
+                }
+            }
+        }
+        Err(SiriusError::ParsingError {
+            ty_name: "char",
+            error: "invalid UTF-8 sequence for char".to_string(),
+        })
     }
 }
 
@@ -181,9 +183,12 @@ fn test_array_sirius() {
 
 #[test]
 fn test_char_sirius_check() {
-    let data = 0x110000_u32.to_be_bytes();
+    let data = 0x45000000_u32.to_be_bytes();
+    assert!(matches!(char::deserialize(&data), Ok(('E', 1))));
+
+    let data = 0xf0450000_u32.to_be_bytes();
     assert!(matches!(
-        char::deserialize(&data),
+        dbg!(char::deserialize(&data)),
         Err(SiriusError::ParsingError {
             ty_name: "char",
             ..

@@ -12,7 +12,7 @@ fn test_struct_sirius() {
     let original = TestStruct {
         a: 42,
         b: "Hello, world!".to_string(),
-        c: vec!['H', 'e', 'l', 'l', 'o'],
+        c: vec!['H', 'e', 'l', 'l', 'ਓ', 'o'],
     };
 
     let serialized = original.serialize_buffered();
@@ -22,12 +22,13 @@ fn test_struct_sirius() {
             0, 0, 0, 42, // a
             0, 0, 0, 13, // length of b
             72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33, // "Hello, world!"
-            0, 0, 0, 5, // length of c
-            0, 0, 0, 72, // 'H'
-            0, 0, 0, 101, // 'e'
-            0, 0, 0, 108, // 'l'
-            0, 0, 0, 108, // 'l'
-            0, 0, 0, 111 // 'o'
+            0, 0, 0, 6,   // length of c
+            72,  // 'H'
+            101, // 'e'
+            108, // 'l'
+            108, // 'l'
+            224, 168, 147, // 'ਓ' (U+0A13, encoded in UTF-8)
+            111  // 'o'
         ]
     );
 
