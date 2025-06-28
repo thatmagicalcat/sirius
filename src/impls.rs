@@ -39,6 +39,27 @@ impl<T: Sirius> Sirius for Vec<T> {
     }
 }
 
+impl<T: Sirius> Sirius for Box<[T]> {
+    fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
+        if self.len() >= LengthPrefix::MAX as usize {
+            panic!("length is greater than LengthPrefix::MAX");
+        }
+
+        output.write_all(&(self.len() as LengthPrefix).to_be_bytes())?;
+        Ok(LENGTH_BYTES
+            + self
+                .iter()
+                .map(|i| i.serialize(output))
+                .sum::<Result<usize, SiriusError>>()?)
+    }
+
+    fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
+        let (vec, bytes_read) = Vec::<T>::deserialize(data)?;
+        let boxed_slice = vec.into_boxed_slice();
+        Ok((boxed_slice, bytes_read))
+    }
+}
+
 impl<T: Sirius, const N: usize> Sirius for [T; N] {
     fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
         self.iter()
@@ -215,6 +236,19 @@ fn test_vec_sirius() {
 
     let (deserialized, bytes_read) = Vec::<char>::deserialize(&serialized).unwrap();
 
+    assert_eq!(deserialized, original);
+    assert_eq!(bytes_read, serialized.len());
+}
+
+#[test]
+fn test_boxed_slice_sirius() {
+    let original = "The quick brown fox jumps over the lazy dog."
+        .chars()
+        .collect::<Box<[char]>>();
+
+    let serialized = original.serialize_buffered();
+
+    let (deserialized, bytes_read) = Box::<[char]>::deserialize(&serialized).unwrap();
     assert_eq!(deserialized, original);
     assert_eq!(bytes_read, serialized.len());
 }
