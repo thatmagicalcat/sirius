@@ -41,26 +41,15 @@ impl<T: Sirius> Sirius for Vec<T> {
 
 impl<T: Sirius, const N: usize> Sirius for [T; N] {
     fn serialize(&self, output: &mut impl Write) -> Result<usize, SiriusError> {
-        if N >= LengthPrefix::MAX as usize {
-            panic!("length is greater than LengthPrefix::MAX");
-        }
-
-        output.write_all(&(self.len() as LengthPrefix).to_be_bytes())?;
-        Ok(LENGTH_BYTES
-            + self
-                .iter()
-                .map(|i| i.serialize(output))
-                .sum::<Result<usize, SiriusError>>()?)
+        self.iter()
+            .map(|i| i.serialize(output))
+            .sum::<Result<usize, SiriusError>>()
     }
 
     fn deserialize(data: &[u8]) -> Result<(Self, usize), SiriusError> {
         let mut offset = 0;
-        let (data_len, bytes_read) = LengthPrefix::deserialize(data)?;
-        offset += bytes_read;
-
-        assert_eq!(data_len, N as _);
-
         let mut deserialized: [T; N] = unsafe { std::mem::zeroed() };
+
         for i in deserialized.iter_mut() {
             let (elem, bytes_read) =
                 T::deserialize(data.get(offset..).ok_or(SiriusError::NotEnoughData)?)?;
